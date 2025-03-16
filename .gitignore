@@ -19,3 +19,4 @@ test/*.png
 !paper/*.png
 !docs/*.png
 run
+src/test.py
