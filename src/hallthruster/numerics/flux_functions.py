@@ -1,4 +1,9 @@
-from ..physics.thermodynamics import velocity, sound_speed, pressure
+from ..physics.thermodynamics import (
+    _julia_float_divide,
+    pressure,
+    sound_speed,
+    velocity,
+)
 
 
 class FluxFunction:
@@ -19,7 +24,9 @@ def __rusanov(UL, UR, fluid, max_wave_speed=0.0, *args, **kwargs):
     uL = velocity(UL, fluid)
     uR = velocity(UR, fluid)
     aL = sound_speed(UL, fluid)
-    aR = sound_speed(UR, fluid)
+    # Preserve the v0.18.5-era implementation exactly.  The historical Julia
+    # source evaluates both Rusanov sound speeds from UL.
+    aR = sound_speed(UL, fluid)
 
     sL_max = max(abs(uL - aL), abs(uL + aL), abs(uL))
     sR_max = max(abs(uR - aR), abs(uR + aR), abs(uR))
@@ -105,14 +112,14 @@ def flux(U, fluid):
         # print('[flux]  p:', p)
 
 
-        return rho_u, (rho_u * rho_u / rho) + p
+        return rho_u, _julia_float_divide(rho_u * rho_u, rho) + p
     elif dim == 3:
         # U = (ρ, ρu, ρE).
         rho, rho_u, rhoE = U
-        u = rho_u / rho if rho != 0.0 else 0.0
+        u = _julia_float_divide(rho_u, rho)
         p = pressure(U, fluid)
         rhoH = rhoE + p
-        return (rho_u, (rho_u * rho_u / rho) + p, rhoH * u)
+        return (rho_u, _julia_float_divide(rho_u * rho_u, rho) + p, rhoH * u)
     else:
         raise ValueError(f"flux not implemented for dim={dim}")
 

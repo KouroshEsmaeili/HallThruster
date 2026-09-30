@@ -66,6 +66,10 @@ class Tridiagonal:
 
         return y
 
+    def copy(self):
+        """Return an independent copy, matching Julia's ``copy(Tridiagonal)``."""
+        return Tridiagonal(self._dl.copy(), self._d.copy(), self._du.copy())
+
     def solve(self, b):
         b = np.array(b,dtype=np.float64)
         if b.shape[0] != self._n:

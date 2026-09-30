@@ -108,8 +108,7 @@ def integrate_heavy_species(U, params, config, dt, apply_boundary_conditions=Tru
         "source_ion_continuity": config.source_ion_continuity,
         "source_ion_momentum": config.source_ion_momentum
     }
-    # Assume that config["scheme"] holds a scheme object.
-    integrate_heavy_species_stage(U, params, config["scheme"], sources, dt, apply_boundary_conditions)
+    integrate_heavy_species_stage(U, params, config.scheme, sources, dt, apply_boundary_conditions)
 
 
 def integrate_heavy_species_stage(U, params, scheme, sources, dt, apply_boundary_conditions=True):
@@ -202,4 +201,3 @@ def update_heavy_species(U, params):
 
     update_heavy_species_calc(U, cache, index, grid.cell_centers, ncharge, mi, landmark)
     # print("[update_heavy_species] params_dict.cache['nn']",params['cache']['nn'])
-

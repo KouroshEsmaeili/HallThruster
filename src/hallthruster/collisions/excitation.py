@@ -29,6 +29,10 @@ def ExcitationLookup():
     return "Lookup"
 
 def ovs_rate_coeff_ex(energy):
+    # Julia floating-point division maps 8.32 / 0.0 to Inf, so the historical
+    # expression evaluates to exp(-Inf) == 0.0.  Python raises instead.
+    if energy == 0:
+        return 0.0
     return 1e-12 * math.exp(-8.32 / energy)
 
 def load_excitation_reactions(model, species, directories=None, **kwargs):

@@ -53,24 +53,19 @@ def uneven_grid_density(z: float, Lch: float) -> float:
 
 def points_from_density(density_fn, domain, N: int):
     import numpy as np
+    from ..utilities.interpolation import interpolate
+
     x0, x1 = domain
-    M = 2000  # for example
-    xs = np.linspace(x0, x1, M)
-    den = np.array([density_fn(float(z)) for z in xs],dtype=np.float64)
+    # Historical HallThruster.jl samples the density at exactly N points, then
+    # linearly interpolates the inverse cumulative distribution at N equally
+    # spaced CDF values.  Using a denser auxiliary grid or nearest-neighbour
+    # lookup changes every interior edge.
+    xs = np.linspace(x0, x1, N)
+    den = np.array([density_fn(float(z)) for z in xs], dtype=np.float64)
     cdf_array = np.cumsum(den)
     cdf_min, cdf_max = cdf_array[0], cdf_array[-1]
-
-    # We want N edges from cdf_min..cdf_max
     cdf_linspace = np.linspace(cdf_min, cdf_max, N)
-
-    # We'll invert via a search:
-    result = []
-    for cval in cdf_linspace:
-        # find index in cdf_array
-        idx = np.searchsorted(cdf_array, cval)
-        idx = max(0, min(idx, M-1))
-        result.append(xs[idx])
-    return result
+    return [interpolate(cval, cdf_array, xs) for cval in cdf_linspace]
 
 def generate_uneven_grid(geometry: Geometry1D, domain, num_cells: int) -> Grid1D:
     def density_fn(z):
@@ -79,4 +74,3 @@ def generate_uneven_grid(geometry: Geometry1D, domain, num_cells: int) -> Grid1D
     num_edges = num_cells + 1
     edges = points_from_density(density_fn, domain, num_edges)
     return Grid1D(edges)
-

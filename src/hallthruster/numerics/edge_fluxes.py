@@ -1,3 +1,5 @@
+import math
+
 from ..physics.thermodynamics import velocity, sound_speed
 from ..simulation.boundaryconditions import right_boundary_state, left_boundary_state
 from ..utilities.utility_functions import right_edge, left_edge
@@ -6,7 +8,11 @@ from ..utilities.utility_functions import right_edge, left_edge
 def reconstruct(u_left, u_mid, u_right, limiter_fn):
     denom = (u_mid - u_left)
     if denom == 0.0:
-        r = 0.0
+        # Julia Float64 division produces NaN for 0/0.  The SlopeLimiter
+        # wrapper then returns zero, including for ``no_limiter``.
+        r = float("nan") if (u_right - u_mid) == 0.0 else math.copysign(
+            float("inf"), u_right - u_mid
+        )
     else:
         r = (u_right - u_mid) / denom
 
@@ -116,7 +122,9 @@ def compute_wave_speeds(lmbda_global, dt_u, UL, UR, U, grid, fluids, index, ncha
             uL = velocity(UL_ions, fluid)
             uR = velocity(UR_ions, fluid)
             aL = sound_speed(UL_ions, fluid)
-            aR = sound_speed(UR_ions, fluid)
+            # Preserve the v0.18.5-era implementation, which evaluates both
+            # sound speeds from the left state.
+            aR = sound_speed(UL_ions, fluid)
 
             s_max = max(
                 abs(uL + aL), abs(uL - aL),
@@ -125,7 +133,7 @@ def compute_wave_speeds(lmbda_global, dt_u, UL, UR, U, grid, fluids, index, ncha
             if s_max != 0.0:
                 dt_max = grid.dz_edge[i] / s_max
             else:
-                dt_max = 1e9
+                dt_max = float("inf")
             dt_u[i] = dt_max
             lmbda_global[fluid_ind] = max(s_max, lmbda_global[fluid_ind])
 
