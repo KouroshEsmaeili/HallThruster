@@ -10,38 +10,37 @@ UM-PEPL/HallThruster.jl
 commit 014a12fb193af6927cb10f77da5e7baf215b5bc0
 ```
 
-The Python work is based on commit `bb00d8ce` on
-`feature/julia-python-validation`, with the M2 changes left uncommitted for
-review. HallThruster.jl and its authors remain the source of the physical model,
-equations, numerical methods, and original architecture.
+The Python foundation is commit `bb00d8ce`; the M2 source-parity checkpoint is
+`d10696e8` on `feature/julia-python-validation`. The final executable-parity
+correction described here is left uncommitted for review. HallThruster.jl and
+its authors remain the source of the physical model, equations, numerical
+methods, and original architecture.
 
 This is not a claim of scientific equivalence. The full historical regression,
 postprocessing metrics, long-time behavior, and performance remain outside M2.
 
-## Environment and executable-Julia limitation
+## Environment and validation terminology
 
 The validation environment used Python 3.12.3 from the repository-local
-`.venv`. No system Python or external repository environment was used.
+`.venv`. No system Python or external repository environment was used. Julia
+1.10.11 was installed user-locally at `/home/dev/.local/bin/julia`. An exact
+archive of HallThruster.jl 0.18.5 at `014a12f` was instantiated as its own
+temporary Julia project and executed directly.
 
-No Julia executable was installed or present in common system/user locations.
-Access to Julia's official download host was also unavailable: the configured
-devbox proxy could not be reached, and direct DNS resolution was disabled.
-Consequently:
+This report uses the following terms:
 
-- component expectations in the normal test suite are derived directly from
-  the historical Julia source, its historical unit tests, and deterministic
-  formulas/data files;
-- these results are explicitly called **source-level parity**;
-- setup, nonzero single-step, and short-simulation Julia comparisons are
-  **blocked**, not silently treated as passing;
-- the optional Julia exporter is present but has not been executed in this
-  environment.
+- **Executable parity:** results directly produced by Julia 1.10.11 executing
+  HallThruster.jl at `014a12f` and Python executing this translation.
+- **Source-level parity:** normal Python tests derived from historical source,
+  formulas, or compact Julia fixtures; Julia is not required to run them.
+- **Deferred scientific validation:** the full historical regression,
+  postprocessing metrics, long-duration behavior, and performance comparison.
 
 ## Methodology
 
 The validation cases use deterministic inputs shared by the Python and Julia
-exporters in `validation/`. Both produce JSON with the following top-level
-components:
+exporters in `validation/`. Both exporters were run afresh and produced JSON
+with the following top-level components:
 
 - constants, gases/species, geometry, and magnetic field;
 - even and uneven grids;
@@ -60,36 +59,41 @@ The source-derived tests generally use exact equality or relative tolerances of
 
 Generated JSON under `validation/outputs/` is ignored. See
 `validation/README.md` for exact regeneration commands using an extracted
-checkout of `014a12f`, rather than modern upstream code.
+checkout of `014a12f`, rather than modern upstream code. The final executable
+comparison exited successfully with code 0.
 
 ## Component validation matrix
 
-`PASS (source)` means the Python result was compared with a historical literal,
-formula, algorithm, or unit-test expectation at `014a12f`; it does not mean a
-Julia executable was run. `FIXED (source)` means such a comparison exposed and
-fixed a translation discrepancy.
+`PASS (exec)` means both exporters executed and the strict comparator accepted
+the component. `FIXED; PASS (exec)` means a confirmed translation discrepancy
+was corrected before the successful executable comparison.
 
-| Component | Status | Maximum observed error | Notes |
-|---|---:|---:|---|
-| Physical constants | PASS (source) | 0 | Historical literals and `R0 = kB * NA`. |
-| Gas/species | PASS (source) | 0 | Xenon derived properties and charge-state strings. |
-| Geometry | PASS (source) | 0 | Generic formulas and SPT-100 dimensions. |
-| EvenGrid | PASS (source) | `<= 1e-17` absolute | Counts 4, 10, and 20; edges, centers, ghost centers, and spacings. |
-| UnevenGrid | FIXED (source) | `<= 2e-15` relative | Restored the historical N-point inverse-CDF interpolation. |
-| Interpolation | PASS (source) | 0 | Interior, endpoints, clamping, and nonuniform locations. |
-| Finite differences | PASS (source) | `<= 1e-15` relative | All six coefficient helpers and direct quadratic derivatives. |
-| Integration | PASS (source) | `<= 1e-15` absolute | Cumulative trapezoid with nonzero initial value. |
-| Linear algebra | FIXED (source) | `<= 1e-15` | Non-mutating tridiagonal solve and input preservation. |
-| Limiters | PASS (source) | `<= 1e-15` relative | Negative, zero, 0.25, 1, 10, Inf, and NaN inputs. |
-| Flux functions | FIXED (source) | `<= 2e-15` relative | Physical flux, Rusanov, global LF, HLLE, and zero-density IEEE behavior. |
-| Reaction tables | FIXED (source) | `<= 2e-15` relative | Elastic/excitation/ionization at 0, 1, 5.5, 10, 20, 50, 100, and 255 eV. |
-| Magnetic field | PASS (source) | `<= 2e-15` relative | Six locations from anode through plume, including the exit plane. |
-| Config defaults | PASS (source) | 0 | Values and model/source semantics checked; core M1 fixes retained. |
-| Fluid/index mapping | PASS (source) | 0 | One, two, and three charge states; physical rows and velocity mask. |
-| Initialization | PASS (source) | `<= 2e-15` relative | State, electron density, energy density, and Te on a four-cell case. |
-| Setup | PARTIAL | Julia error metrics unavailable | Python arrays exported; source and invariants audited; executable Julia blocked. |
-| Single-step solver | BLOCKED | unavailable | Python timestep helpers run; no matched nonzero Julia step. |
-| Short simulation | BLOCKED | unavailable | Python reaches `1e-7 s` with 3 finite frames; Julia run unavailable. |
+| Component | Status | Max abs | Max rel | Relative L2 | Notes |
+|---|---:|---:|---:|---:|---|
+| Physical constants | PASS (exec) | `0` | `0` | `0` | Historical literals and `R0 = kB * NA`. |
+| Gas/species | PASS (exec) | `0` | `0` | `0` | Xenon properties and charge-state representation. |
+| Geometry | PASS (exec) | `0` | `0` | `0` | Generic formulas and SPT-100 dimensions. |
+| EvenGrid | PASS (exec) | `1.387779e-17` | `3.469447e-15` | `1.392545e-18` | Counts 4, 10, and 20, including ghost cells and spacings. |
+| UnevenGrid | FIXED; PASS (exec) | `1.387779e-17` | `4.385825e-15` | `2.449302e-18` | Historical N-point inverse-CDF interpolation. |
+| Interpolation | PASS (exec) | `0` | `0` | `0` | Interior, endpoints, clamping, and nonuniform locations. |
+| Finite differences | PASS (exec) | `0` | `0` | `0` | Six coefficient helpers and direct quadratic derivatives. |
+| Integration | PASS (exec) | `0` | `0` | `0` | Cumulative trapezoid with nonzero initial value. |
+| Linear algebra | FIXED; PASS (exec) | `0` | `0` | `0` | Tridiagonal right-hand side and solution. |
+| Limiters | PASS (exec) | `0` | `0` | `0` | Negative, zero, 0.25, 1, 10, Inf, and NaN inputs. |
+| Flux functions | FIXED; PASS (exec) | `0` | `0` | `0` | Physical flux, Rusanov, global LF, and HLLE. |
+| Reaction tables | FIXED; PASS (exec) | `7.888609e-31` | `2.324503e-16` | `1.629429e-33` | Elastic, excitation, and ionization tables at eight energies. |
+| Magnetic field | PASS (exec) | `8.673617e-19` | `1.516927e-16` | `6.132858e-18` | Six positions from anode through plume. |
+| Config defaults | PASS (exec) | `0` | `0` | `0` | Values and model/source semantics. |
+| Fluid/index mapping | PASS (exec) | `0` | `0` | `0` | One, two, and three charge states, compared by physical meaning. |
+| Initialization | PASS (exec) | `5.421011e-20` | `1.788993e-16` | `6.016104e-39` | Four-cell, three-charge deterministic initialization. |
+| Setup | PASS (exec) | `1.048576e+06` | `5.913643e-14` | `7.498280e-17` | Matched 20-cell state, grid, geometry, and cache arrays. |
+| Single-step solver | DEFERRED | unavailable | unavailable | unavailable | No separately isolated one-step export; do not infer it from the short run. |
+| Short simulation | PASS (exec) | `4.718592e+06` | `7.885877e-15` | `2.987034e-16` | Matched 20-cell, fixed-step run to `1e-7 s`, with three frames. |
+
+The large setup and short-run absolute errors occur in density or flux-like
+arrays whose values are around `1e19` or similarly large scales. They are
+reported rather than hidden; the relative and relative-L2 errors show that the
+differences are at floating-point scale.
 
 ## Confirmed translation discrepancies fixed in M2
 
@@ -125,6 +129,25 @@ fixed a translation discrepancy.
   quirk instead of preserving it.
 - Fix: use `UL` for both, with an explicit provenance comment.
 - Regression: `test_flux_functions_match_historical_reference_case`.
+
+### HLLE historical sound-speed behavior
+
+- Classification: `PYTHON_TRANSLATION_BUG`.
+- Python: `src/hallthruster/numerics/flux_functions.py`
+- Julia: `src/numerics/flux_functions.jl`
+- Observed difference: with the matched unequal states, historical Julia
+  evaluates `aR = 177.94316410919706` from `UL`; Python evaluated
+  `aR = 251.6496360148078` from `UR`. This changed `sR_min` from
+  `-77.94316410919706` to `-151.6496360148078` and changed all three HLLE
+  entries.
+- Root cause: as with Rusanov, historical Julia deliberately or accidentally
+  calls `sound_speed(UL, fluid)` for both sides. The Python translation had
+  replaced the second argument with the conventional right state.
+- Fix: reproduce the historical left-state call exactly; no equation,
+  tolerance, or harness input was changed.
+- Regression:
+  `test_hlle_matches_executable_historical_left_sound_speed_fixture`, using
+  values generated by HallThruster.jl at `014a12f` under Julia 1.10.11.
 
 ### Julia IEEE division semantics in fluid fluxes
 
@@ -175,20 +198,34 @@ fixed a translation discrepancy.
 
 ## Numerical comparison status
 
-For the deterministic four-cell, three-charge initialization case, comparison
-against compact source-derived reference arrays gives:
+For the deterministic four-cell, three-charge initialization case, executable
+comparison gives:
 
 | Array | Max absolute error | Max relative error | Relative L2 error |
 |---|---:|---:|---:|
-| Heavy-species state | 0 | 0 | 0 |
+| Heavy-species state | `5.421011e-20` | `1.788993e-16` | `3.111064e-17` |
 | Electron density | 0 | 0 | 0 |
 | Electron energy density | 0 | 0 | 0 |
 | Electron temperature | 0 | 0 | 0 |
 
-These zero values indicate equality with the committed decimal fixtures after
-Float64 round-tripping; they are not measurements from an executed Julia run.
+For all three saved frames of the matched short simulation, executable
+comparison gives:
 
-The Python short case currently reports:
+| Field | Max absolute error | Max relative error | Relative L2 error |
+|---|---:|---:|---:|
+| Saved times | `0` | `0` | `0` |
+| Neutral density (`nn`) | `0` | `0` | `0` |
+| Ion density (`ni`) | `2.560000e+02` | `6.517716e-16` | `1.076509e-16` |
+| Ion flux (`niui`) | `4.718592e+06` | `1.338462e-15` | `2.987202e-16` |
+| Ion velocity (`ui`) | `2.182787e-11` | `1.221258e-15` | `3.581579e-16` |
+| Electron density (`ne`) | `2.560000e+02` | `6.517716e-16` | `1.076509e-16` |
+| Electron temperature (`Tev`) | `1.065814e-14` | `7.042426e-16` | `2.359758e-16` |
+| Potential gradient (`∇ϕ`) | `1.091394e-11` | `7.885877e-15` | `4.854247e-16` |
+| Discharge current (`Id`) | `2.664535e-15` | `4.719107e-16` | `2.962646e-16` |
+| Ionization frequency (`νiz`) | `1.746230e-10` | `1.400053e-15` | `2.876816e-16` |
+| Collision frequency (`νc`) | `3.725290e-09` | `9.814356e-16` | `5.092375e-17` |
+
+The standalone M1 smoke script still reports:
 
 ```text
 retcode=success
@@ -198,19 +235,10 @@ saved_frames=3
 finite_state_arrays=True
 ```
 
-Selected Python-only diagnostics (recorded for later comparison, not treated as
-reference values) are:
-
-| Time (s) | Mean neutral density | Max ion density | Max Te (eV) | Max abs(E) (V/m) | Id (A) |
-|---:|---:|---:|---:|---:|---:|
-| 0 | `1.5788463126e19` | `9.7449540553e17` | `26.3856537069` | `1.7976957081e4` | `5.9809148174` |
-| `5e-8` | `1.6045944203e19` | `9.4502852333e17` | `24.0938022559` | `1.8888302088e4` | `5.5867031675` |
-| `1e-7` | `1.6045192199e19` | `9.2367767433e17` | `23.9326019374` | `1.8198739557e4` | `5.6462703177` |
-
-Julia/Python max-absolute, max-relative, and relative-L2 metrics for setup,
-single-step evolution, and the short simulation are unavailable until the Julia
-exporter can run. No placeholder zeros or historical full-regression values are
-used in their place.
+For this matched 20-cell, fixed-step short simulation, the Python translation
+reproduces the exported historical Julia quantities to floating-point
+precision. This result is specific to this small case and is not a claim of
+full scientific equivalence.
 
 ## Automated coverage and remaining work
 
@@ -222,14 +250,17 @@ The M2 tests are:
 
 They augment, rather than replace, the M1 suite. Compact expected values are
 documented in the tests with the exact reference commit; no large generated
-outputs are committed.
+outputs are committed. Some edge cases, including zero-density IEEE behavior,
+flat-slope reconstruction, and the Config overload, remain source-level tests
+because those specific cases are not part of the executable JSON export.
 
-Remaining discrepancies and blocked validation are grouped as follows:
+Remaining or deliberately deferred validation is grouped as follows:
 
 - **Indexing:** restart mapping for multiple charge states and less-used
   one-based ranges still need executable/restart cases.
-- **Setup:** the matching exporter exists, but no Julia setup JSON is available.
-- **Solver:** nonzero one-step and matched short-run comparisons remain blocked.
+- **Setup:** the deterministic setup export passes; restart setup is not covered.
+- **Solver:** the matched short run passes, but an independently isolated
+  nonzero single-step export remains deferred.
 - **Numerical:** defensive zero-frequency branches outside the validated flux
   path need executable Julia edge-case checks before alteration.
 - **Postprocessing:** thrust/current/efficiency parity remains deferred.
@@ -237,7 +268,11 @@ Remaining discrepancies and blocked validation are grouped as follows:
 - **Performance:** no optimization or runtime parity work was performed.
 - **Scientific validation:** the 200-cell, `1e-3 s` historical regression has
   not been run or used for tuning.
+- **Compatibility:** modern `upstream/main` behavior is outside this historical
+  translation target.
 
-Once Julia 1.10 is available, run the commands in `validation/README.md`, keep
-the strict comparator tolerance initially, diagnose the earliest failing
-component, and only then proceed to nonzero-step and full scientific validation.
+The translated Python implementation therefore has executable parity with
+HallThruster.jl commit `014a12f` for the exported components, deterministic
+initialization/setup state, and the matched short fixed-step simulation. Full
+historical regression, postprocessing metrics, long-duration stability, and
+performance comparison remain separate validation milestones.

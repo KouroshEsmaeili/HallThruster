@@ -50,7 +50,10 @@ def __HLLE(UL, UR, fluid, *args, **kwargs):
     uL = velocity(UL, fluid)
     uR = velocity(UR, fluid)
     aL = sound_speed(UL, fluid)
-    aR = sound_speed(UR, fluid)
+    # Preserve the v0.18.5-era implementation exactly.  Like Rusanov above,
+    # the historical Julia HLLE implementation evaluates both sound speeds
+    # from UL.
+    aR = sound_speed(UL, fluid)
 
     sL_min = min(0.0, uL - aL)
     sL_max = max(0.0, uL + aL)

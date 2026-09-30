@@ -215,9 +215,19 @@ def test_flux_functions_match_historical_reference_case():
         [300.0, 128998.26179191557, 26999130.895957787],
         rtol=2e-15,
     )
+
+
+def test_hlle_matches_executable_historical_left_sound_speed_fixture():
+    """Match HallThruster.jl@014a12f executed with Julia 1.10.11."""
+    fluid = EulerEquations(Xenon(1))
+    left = (1.0, 300.0, Xenon.cv * 300.0 + 0.5 * 300.0**2)
+    right = (0.5, 50.0, 0.5 * (Xenon.cv * 600.0 + 0.5 * 100.0**2))
+
+    # These unequal states distinguish the historical aR = sound_speed(UL)
+    # behavior from evaluating the right-state sound speed.
     np.testing.assert_allclose(
         HLLE(left, right, fluid),
-        [297.34359165652796, 117304.8333663405, 27161806.884824194],
+        [298.4536590555515, 113833.65984549074, 27407057.9046805],
         rtol=2e-15,
     )
 
