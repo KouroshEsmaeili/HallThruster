@@ -1,0 +1,7 @@
+*.json
+*.png
+*.npz
+*.csv
+*.pkl
+*.pkl.tmp
+!.gitignore
