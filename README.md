@@ -1,51 +1,249 @@
-![HallThruster.jl Logo](./docs/src/assets/banner_light.svg#gh-dark-mode-only)
-![HallThruster.jl Logo](./docs/src/assets/banner.svg#gh-light-mode-only)
+# HallThruster — Historical Python Translation & Validation
 
-| **Documentation** | **Build Status**| **Paper**| **Repository DOI**|
-|:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://UM-PEPL.github.io/HallThruster.jl/dev) | [![CI](https://github.com/UM-PEPL/HallThruster.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/UM-PEPL/HallThruster.jl/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/UM-PEPL/HallThruster.jl/branch/main/graph/badge.svg?token=cEoGN49eZp)](https://codecov.io/gh/UM-PEPL/HallThruster.jl)| [![status](https://joss.theoj.org/papers/ce9cb7aa54df10d69ed248912e584f53/status.svg)](https://joss.theoj.org/papers/ce9cb7aa54df10d69ed248912e584f53) | [![DOI](https://zenodo.org/badge/394711445.svg)](https://zenodo.org/badge/latestdoi/394711445) |
+[![CI](https://github.com/KouroshEsmaeili/HallThruster/actions/workflows/ci.yml/badge.svg)](https://github.com/KouroshEsmaeili/HallThruster/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+[![Upstream](https://img.shields.io/badge/upstream-HallThruster.jl-9558B2)](https://github.com/UM-PEPL/HallThruster.jl)
 
+This repository is a **historical Python translation and validation fork** of
+[UM-PEPL/HallThruster.jl](https://github.com/UM-PEPL/HallThruster.jl), an open-source
+1D fluid Hall thruster simulation code developed at the University of Michigan
+Plasmadynamics and Electric Propulsion Laboratory.
 
-HallThruster.jl is an open-source, 1D fluid Hall thruster code written in Julia. It is developed by [Thomas Marks](https://thomasmarks.space), [Paul Schedler](https://www.linkedin.com/in/paul-schedler-1b3b6b171/) and Declan Brick at the University of Michigan's [Plasmadynamics and Electric Propulsion Laboratory](https://pepl.engin.umich.edu) and is licensed under the MIT license.
+The Python implementation in this fork is based on the HallThruster.jl
+**v0.18.5-era** code at upstream commit
+`014a12fb193af6927cb10f77da5e7baf215b5bc0`.
+
+> [!IMPORTANT]
+> This is **not an official Python release of HallThruster.jl** and it is not a
+> claim of general scientific equivalence with current upstream HallThruster.jl.
+> The original physical model, equations, numerical methods, SPT-100 regression
+> case, and software architecture belong to the upstream HallThruster.jl project
+> and its authors.
+
+## What this fork adds
+
+The work in this fork focuses on translating, repairing, packaging, and
+validating the historical implementation in Python. The main additions are:
+
+- a proper installable Python package under `src/hallthruster/`;
+- Python 3.11+ packaging with `pyproject.toml`;
+- translation fixes for Julia/Python semantic differences;
+- deterministic Julia↔Python component validation;
+- executable parity checks against the exact historical Julia source;
+- a full historical SPT-100 regression validation;
+- focused regression tests for confirmed translation bugs;
+- checkpointed validation tooling for long Python runs;
+- GitHub Actions CI for Python 3.11 and 3.12;
+- reproducibility and validation documentation.
+
+The original translation was created to make the framework easier to use from
+Python. The later work in this repository turns that translation into a
+reproducible, tested, and technically documented implementation.
+
+## Validation status
+
+The validation target is the exact historical HallThruster.jl commit:
+
+```text
+014a12fb193af6927cb10f77da5e7baf215b5bc0
+HallThruster.jl 0.18.5 era
+```
+
+Current validated status:
+
+| Validation layer | Result |
+|---|---|
+| Python test suite | `51 passed, 1 xfailed` |
+| Tiny fixed-step smoke simulation | PASS |
+| Python 3.11 CI | PASS |
+| Python 3.12 CI | PASS |
+| Julia↔Python component comparison | PASS at strict component tolerances |
+| 20-cell fixed-step executable comparison | PASS |
+| Historical 200-cell SPT-100 regression to `1e-3 s` | PASS under the original upstream regression criteria |
+| Long-run strict instantaneous `1e-8` cross-language parity | Does not remain satisfied at the final state |
+
+For the full historical SPT-100 case, Julia and Python both completed with:
+
+- `172,613` accepted steps;
+- `1,000` saved frames;
+- reported final time `1e-3 s`;
+- matching historical scalar acceptance criteria.
+
+The long-duration solution develops a small, smooth phase separation late in
+the run. Early and midpoint trajectories remain extremely close, while the
+final instantaneous state no longer satisfies the strict `1e-8`
+cross-language diagnostic. Time-averaged profiles and historical scalar
+metrics remain within the documented validation envelope.
+
+This limitation is reported explicitly rather than hidden by changing the
+historical acceptance criteria.
+
+See **[VALIDATION.md](VALIDATION.md)** for the complete methodology, numerical
+errors, historical configuration, repaired translation discrepancies, and
+scope limitations.
 
 ## Installation
 
-To install HallThruster.jl, you must first install Julia 1.10 or above from the [official Julia site](https://julialang.org/downloads/). We recommend using the latest Julia release when possible. Once installed, launch Julia and type `]` to enter the Pkg REPL. To install HallThruster.jl type
+Clone this fork and create a virtual environment:
 
-```julia
-(@v1.10) pkg> add https://github.com/UM-PEPL/HallThruster.jl
+```bash
+git clone https://github.com/KouroshEsmaeili/HallThruster.git
+cd HallThruster
+
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 ```
 
-This will install HallThruster.jl using Julia's package manager. For details on setting up and running Hall thruster simulations, see [the official documentation](https://UM-PEPL.github.io/HallThruster.jl/dev).
+On Windows PowerShell, activate the environment with:
 
-## Changelog
-
-> [!WARNING]
-> v0.18.0 is a breaking release, made as part of our effort to move toward v1.0.0 in the next few months.
-> Users may need to update their code to avoid errors. 
-> Check out the [list of changes and removals](NEWS.md) to see how to migrate your code.
-
-A log of changes to the code from v0.18.0 onward can be found [here](NEWS.md).
-
-## Contribution
-
-Users are welcome to suggest and implement features for the code, as well as report bugs or numerical issues they encounter. Please feel free to [open an issue on this repository](https://github.com/UM-PEPL/HallThruster.jl/issues/new) describing your desired change/bug-fix. Pull requests are also welcome!
-
-## Citation
-
-If you use this code in your work, please cite our [publication in the Journal of Open Source Software](https://joss.theoj.org/papers/10.21105/joss.04672):
-
-```
-@article{Marks2023, 
-  doi = {10.21105/joss.04672},
-  url = {https://doi.org/10.21105/joss.04672},
-  year = {2023},
-  publisher = {The Open Journal},
-  volume = {8}, number = {86}, pages = {4672},
-  author = {Thomas Marks and Paul Schedler and Benjamin Jorns},
-  title = {HallThruster.jl: a Julia package for 1D Hall thruster discharge simulation},
-  journal = {Journal of Open Source Software} 
-} 
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
- This BibTEX entry can also be found in [CITATION.bib](https://github.com/UM-PEPL/HallThruster.jl/blob/main/CITATION.bib).
+The core package requires Python 3.11+ and NumPy. Optional extras are available
+for visualization and LANDMARK-related tooling:
+
+```bash
+python -m pip install -e ".[visualization]"
+python -m pip install -e ".[landmark]"
+```
+
+## Quick smoke test
+
+Run the controlled tiny simulation used by CI:
+
+```bash
+python scripts/run_tiny_simulation.py
+```
+
+A successful run reports:
+
+```text
+retcode=success
+requested_end_time=1e-07
+actual_end_time=1e-07
+saved_frames=3
+finite_state_arrays=True
+```
+
+Run the regular test suite with:
+
+```bash
+python -m pytest -q
+```
+
+## Minimal Python example
+
+```python
+from hallthruster import Config, EvenGrid, SPT_100, SimParams, run_simulation
+
+config = Config(
+    thruster=SPT_100,
+    domain=(0.0, 0.08),
+    discharge_voltage=300.0,
+    anode_mass_flow_rate=5e-6,
+    neutral_temperature_K=500.0,
+)
+
+sim = SimParams(
+    grid=EvenGrid(20),
+    dt=1e-8,
+    duration=1e-7,
+    num_save=3,
+    adaptive=False,
+    verbose=False,
+)
+
+solution = run_simulation(config, sim)
+
+print(solution.retcode)
+print(solution.t[-1])
+```
+
+## Repository structure
+
+```text
+src/hallthruster/        Python translation
+tests/                   unit, parity, and regression tests
+scripts/                 small executable smoke cases
+validation/              Julia/Python exporters and comparators
+VALIDATION.md            detailed scientific/translation validation report
+reactions/               reaction data inherited from the original project
+landmark/                LANDMARK-related data inherited from the original project
+docs/                    upstream documentation assets retained by the fork
+```
+
+Generated validation JSON, plots, and long-run checkpoint files are intentionally
+ignored rather than committed to the repository.
+
+## Reproducing the validation
+
+Two validation layers are provided:
+
+1. **Component/executable validation** under `validation/`, comparing Python
+   results with an exact checkout of historical HallThruster.jl.
+2. **Historical regression validation** under `validation/historical/`, using
+   the original SPT-100 regression configuration.
+
+Start with:
+
+- [validation/README.md](validation/README.md)
+- [validation/historical/README.md](validation/historical/README.md)
+- [VALIDATION.md](VALIDATION.md)
+
+The approximately six-hour pure-Python historical regression is deliberately
+**not** part of normal CI. CI runs only the fast tests and controlled smoke
+simulation.
+
+## Scope and limitations
+
+This repository validates a **historical translation**, not the current
+HallThruster.jl codebase. In particular:
+
+- the validation reference is upstream commit `014a12f`;
+- current upstream HallThruster.jl features are not automatically ported;
+- validation beyond the documented SPT-100 operating point is not claimed;
+- runs longer than `1e-3 s` have not been established as equivalent;
+- the Python implementation has not been performance-optimized;
+- the unfinished translated JSON runner is not treated as a validated public
+  interface.
+
+For new scientific work, consult the actively maintained upstream project and
+evaluate whether the current Julia implementation is more appropriate.
+
+## Attribution
+
+HallThruster.jl is the original project. The upstream project and its authors
+remain the source of the physics, numerical formulation, regression case, and
+original implementation architecture.
+
+Original project:
+
+- [UM-PEPL/HallThruster.jl](https://github.com/UM-PEPL/HallThruster.jl)
+- [Official HallThruster.jl documentation](https://UM-PEPL.github.io/HallThruster.jl/dev)
+- Marks, Schedler, and Jorns, *HallThruster.jl: a Julia package for 1D Hall
+  thruster discharge simulation*, Journal of Open Source Software, 2023.
+
+If you use the underlying HallThruster model or software in scientific work,
+please cite the original HallThruster.jl publication. The repository retains
+the upstream [CITATION.bib](CITATION.bib).
+
+## License
+
+The upstream HallThruster.jl project is distributed under the MIT License.
+This fork retains the original license and copyright notice in
+[LICENSE.md](LICENSE.md).
+
+The license permits modification and redistribution while requiring the
+original copyright and permission notice to be preserved.
+
+## Maintainer of this fork
+
+**Kourosh Esmaeili**
+
+This fork's contribution is the historical Python translation work,
+translation repair, packaging, reproducibility tooling, automated tests,
+Julia↔Python validation, and CI around the original HallThruster.jl model.
