@@ -166,15 +166,25 @@ print(solution.t[-1])
 ## Repository structure
 
 ```text
-src/hallthruster/        Python translation
-tests/                   unit, parity, and regression tests
-scripts/                 small executable smoke cases
+src/hallthruster/        maintained Python translation
+tests/                   Python unit, parity, and regression tests
+scripts/                 small executable Python smoke cases
 validation/              Julia/Python exporters and comparators
 VALIDATION.md            detailed scientific/translation validation report
-reactions/               reaction data inherited from the original project
-landmark/                LANDMARK-related data inherited from the original project
-docs/                    upstream documentation assets retained by the fork
+reactions/               reaction data inherited from upstream
+landmark/                LANDMARK-related data inherited from upstream
+python/                  inherited upstream Python helper/wrapper (not the translated solver)
+test/                    inherited historical Julia test suite
+docs/                    inherited upstream Julia documentation assets
+paper/                   inherited upstream publication/thesis assets
+ext/                     inherited Julia extension files
+Project.toml             inherited historical Julia package metadata
 ```
+
+The maintained Python implementation for this fork is **`src/hallthruster/`**.
+The top-level `python/`, `test/`, `docs/`, `paper/`, `ext/`, and Julia
+project metadata are retained as historical upstream/reference assets; they
+should not be mistaken for the maintained Python package.
 
 Generated validation JSON, plots, and long-run checkpoint files are intentionally
 ignored rather than committed to the repository.
