@@ -11,10 +11,10 @@ commit 014a12fb193af6927cb10f77da5e7baf215b5bc0
 ```
 
 The Python foundation is commit `bb00d8ce`; the M2 source-parity checkpoint is
-`d10696e8`; and the M2 executable-parity checkpoint is `a9c4740d`. M3 was run
-on `feature/historical-regression-validation`, with its changes left
-uncommitted for review. HallThruster.jl and its authors remain the source of
-the physical model, equations, numerical methods, SPT-100 regression case, and
+`d10696e8`; the M2 executable-parity checkpoint is `a9c4740d`; and the M3
+historical-regression validation was committed as `7b9e1b34` and subsequently
+merged into `main`. HallThruster.jl and its authors remain the source of the
+physical model, equations, numerical methods, SPT-100 regression case, and
 original architecture.
 
 This is not a claim of general scientific equivalence. M3 covers one exact
