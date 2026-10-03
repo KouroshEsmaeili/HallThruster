@@ -43,7 +43,7 @@ def update_plume_geometry(params):
 
     L_ch = thruster.geometry.channel_length
     # Find the exit plane index: first index where cell_centers >= L_ch.
-    indices = np.where(grid.cell_centers >= L_ch)[0]
+    indices = np.where(np.asarray(grid.cell_centers) >= L_ch)[0]
     exit_plane_index = indices[0] if len(indices) > 0 else 0
     Tev_exit = Tev[exit_plane_index]
     inv_mi = 1.0 / mi

@@ -73,9 +73,9 @@ def time_average_from_frame(sol, start_frame=0):
 
 # --- Frame Dictionary Conversion ---
 def frame_dict(sol, frame):
-    grid = sol.params["grid"]  # Assume grid is a dict with key "cell_centers"
-    ncharge = config.ncharge
-    f = sol.frames[frame - 1]  # Convert from 1-indexed to 0-indexed.
+    grid = sol.params["grid"]
+    ncharge = sol.config.ncharge
+    f = sol.frames[frame]
     d = OrderedDict()
     d["thrust"] = thrust(sol, frame)
     d["discharge_current"] = discharge_current(sol, frame)
@@ -85,8 +85,8 @@ def frame_dict(sol, frame):
     d["current_eff"] = current_eff(sol, frame)
     d["divergence_eff"] = divergence_eff(sol, frame)
     d["anode_eff"] = anode_eff(sol, frame)
-    d["t"] = sol.t[frame - 1]
-    d["z"] = sol.params["grid"]["cell_centers"]
+    d["t"] = sol.t[frame]
+    d["z"] = grid.cell_centers
     d["nn"] = f.get("nn")
     d["ni"] = [f["ni"][Z] for Z in range(ncharge)]
     d["ui"] = [f["ui"][Z] for Z in range(ncharge)]
@@ -135,62 +135,62 @@ def thrust_all(sol):
 
 
 def discharge_current(sol, frame):
-    f = sol.frames[frame - 1]
+    f = sol.frames[frame]
     return f["Id"][0] if "Id" in f and len(f["Id"]) > 0 else 0.0
 
 
 def discharge_current_all(sol):
-    return [discharge_current(sol, i + 1) for i in range(len(sol.frames))]
+    return [discharge_current(sol, i) for i in range(len(sol.frames))]
 
 
 def anode_eff(sol, frame):
     T_val = thrust(sol, frame)
     current = discharge_current(sol, frame)
-    Vd = sol.config["discharge_voltage"]
-    mdot_a = sol.config["anode_mass_flow_rate"]
+    Vd = sol.config.discharge_voltage
+    mdot_a = sol.config.anode_mass_flow_rate
     return 0.5 * T_val ** 2 / current / Vd / mdot_a
 
 
 def anode_eff_all(sol):
-    return [anode_eff(sol, i + 1) for i in range(len(sol.frames))]
+    return [anode_eff(sol, i) for i in range(len(sol.frames))]
 
 
 def voltage_eff(sol, frame):
-    Vd = sol.config["discharge_voltage"]
-    mi = sol.config["propellant"].m
-    f = sol.frames[frame - 1]
+    Vd = sol.config.discharge_voltage
+    mi = sol.config.propellant.m
+    f = sol.frames[frame]
     # For the first ion species, assume row index 0.
     ui = f["niui"][0, -1] / f["ni"][0, -1]
     return 0.5 * mi * ui ** 2 / e / Vd
 
 
 def voltage_eff_all(sol):
-    return [voltage_eff(sol, i + 1) for i in range(len(sol.frames))]
+    return [voltage_eff(sol, i) for i in range(len(sol.frames))]
 
 
 def divergence_eff(sol, frame):
-    f = sol.frames[frame - 1]
+    f = sol.frames[frame]
     tan_delta = f["tanδ"][-1]
     delta = math.atan(float(tan_delta))
     return math.cos(delta) ** 2
 
 
 def divergence_eff_all(sol):
-    return [divergence_eff(sol, i + 1) for i in range(len(sol.frames))]
+    return [divergence_eff(sol, i) for i in range(len(sol.frames))]
 
 
 def ion_current(sol, frame):
     Ii = 0.0
-    f = sol.frames[frame - 1]
+    f = sol.frames[frame]
     right_area = f["channel_area"][-1]
-    ncharge = sol.config.get("ncharge", 1)
+    ncharge = sol.config.ncharge
     for Z in range(ncharge):
         Ii += (Z + 1) * e * f["niui"][Z, -1] * right_area
     return Ii
 
 
 def ion_current_all(sol):
-    return [ion_current(sol, i + 1) for i in range(len(sol.frames))]
+    return [ion_current(sol, i) for i in range(len(sol.frames))]
 
 
 def electron_current(sol, frame):
@@ -198,7 +198,7 @@ def electron_current(sol, frame):
 
 
 def electron_current_all(sol):
-    return [electron_current(sol, i + 1) for i in range(len(sol.frames))]
+    return [electron_current(sol, i) for i in range(len(sol.frames))]
 
 
 def current_eff(sol, frame):
@@ -207,20 +207,20 @@ def current_eff(sol, frame):
 
 
 def current_eff_all(sol):
-    return [current_eff(sol, i + 1) for i in range(len(sol.frames))]
+    return [current_eff(sol, i) for i in range(len(sol.frames))]
 
 
 def mass_eff(sol, frame):
     mass_eff_val = 0.0
-    f = sol.frames[frame - 1]
+    f = sol.frames[frame]
     right_area = f["channel_area"][-1]
     mi = sol.params["mi"]
-    mdot = sol.config["anode_mass_flow_rate"]
-    ncharge = config.ncharge
+    mdot = sol.config.anode_mass_flow_rate
+    ncharge = sol.config.ncharge
     for Z in range(ncharge):
         mass_eff_val += mi * f["niui"][Z, -1] * right_area / mdot
     return mass_eff_val
 
 
 def mass_eff_all(sol):
-    return [mass_eff(sol, i + 1) for i in range(len(sol.frames))]
+    return [mass_eff(sol, i) for i in range(len(sol.frames))]

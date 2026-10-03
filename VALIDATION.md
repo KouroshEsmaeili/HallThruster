@@ -2,8 +2,8 @@
 
 ## Scope and reference
 
-This document records M2 component validation of the historical Python
-translation against:
+This document records M2 component validation and M3 historical-regression
+validation of the Python translation against:
 
 ```text
 UM-PEPL/HallThruster.jl
@@ -11,13 +11,16 @@ commit 014a12fb193af6927cb10f77da5e7baf215b5bc0
 ```
 
 The Python foundation is commit `bb00d8ce`; the M2 source-parity checkpoint is
-`d10696e8` on `feature/julia-python-validation`. The final executable-parity
-correction described here is left uncommitted for review. HallThruster.jl and
-its authors remain the source of the physical model, equations, numerical
-methods, and original architecture.
+`d10696e8`; and the M2 executable-parity checkpoint is `a9c4740d`. M3 was run
+on `feature/historical-regression-validation`, with its changes left
+uncommitted for review. HallThruster.jl and its authors remain the source of
+the physical model, equations, numerical methods, SPT-100 regression case, and
+original architecture.
 
-This is not a claim of scientific equivalence. The full historical regression,
-postprocessing metrics, long-time behavior, and performance remain outside M2.
+This is not a claim of general scientific equivalence. M3 covers one exact
+historical SPT-100 regression configuration; other configurations, longer
+runs, modern upstream versions, and performance optimization remain outside
+the validated scope.
 
 ## Environment and validation terminology
 
@@ -33,8 +36,11 @@ This report uses the following terms:
   HallThruster.jl at `014a12f` and Python executing this translation.
 - **Source-level parity:** normal Python tests derived from historical source,
   formulas, or compact Julia fixtures; Julia is not required to run them.
-- **Deferred scientific validation:** the full historical regression,
-  postprocessing metrics, long-duration behavior, and performance comparison.
+- **Historical-regression validation:** the executable 200-cell, `1e-3 s`
+  SPT-100 case and its upstream scalar acceptance criteria.
+- **Deferred scientific validation:** other operating points, model choices,
+  longer-duration stability, current upstream compatibility, and performance
+  optimization.
 
 ## Methodology
 
@@ -263,16 +269,216 @@ Remaining or deliberately deferred validation is grouped as follows:
   nonzero single-step export remains deferred.
 - **Numerical:** defensive zero-frequency branches outside the validated flux
   path need executable Julia edge-case checks before alteration.
-- **Postprocessing:** thrust/current/efficiency parity remains deferred.
+- **Postprocessing:** M2 deferred thrust/current/efficiency parity; the M3
+  section below validates those metrics for the historical SPT-100 case.
 - **JSON:** the historical Python JSON entry path remains the existing xfail.
-- **Performance:** no optimization or runtime parity work was performed.
-- **Scientific validation:** the 200-cell, `1e-3 s` historical regression has
-  not been run or used for tuning.
+- **Performance:** M2 performed no optimization; M3 records a baseline runtime
+  without changing the implementation for speed.
+- **Scientific validation:** M2 stopped before the 200-cell case. The M3
+  section below records that regression without tuning physical inputs.
 - **Compatibility:** modern `upstream/main` behavior is outside this historical
   translation target.
 
-The translated Python implementation therefore has executable parity with
-HallThruster.jl commit `014a12f` for the exported components, deterministic
-initialization/setup state, and the matched short fixed-step simulation. Full
-historical regression, postprocessing metrics, long-duration stability, and
-performance comparison remain separate validation milestones.
+At the M2 checkpoint, the translated Python implementation therefore had
+executable parity with HallThruster.jl commit `014a12f` for the exported
+components, deterministic initialization/setup state, and the matched short
+fixed-step simulation. M3 extends, but does not replace, that evidence below.
+
+## Historical SPT-100 full regression
+
+### Reference case and execution method
+
+M3 executes `test/regression/baseline.json` and the acceptance logic in
+`test/regression/spt100.jl` and `test/regression/regression_utils.jl` from the
+exact `014a12f` archive. The fresh Julia reference used Julia 1.10.11 and
+HallThruster.jl 0.18.5. Python 3.12.3 ran from the repository-local `.venv`.
+Neither current `upstream/main` nor the unfinished Python JSON runner was used.
+
+The matched configuration is:
+
+| Setting | Historical value |
+|---|---:|
+| Thruster geometry | SPT-100 name; `0.035 / 0.05 / 0.025 m` inner radius, outer radius, channel length |
+| Grid and domain | `EvenGrid(200)`, `0.0` to `0.08 m` |
+| Charge states | 3 |
+| Mass flow / discharge voltage | `5e-6 kg/s` / `300 V` |
+| Cathode coupling voltage | `30 V` |
+| Neutral velocity / temperature | `278.031 m/s` / `300 K` |
+| Ion temperature | `1000 K` |
+| Anode / cathode electron temperature | `3.26173 eV` / `3.26173 eV` |
+| Background | `1e-5 Torr`, `300 K` |
+| Anomalous transport | `LogisticPressureShift(GaussianBohm(...))` with the values in `baseline.json` |
+| Wall model | `WallSheath(BNSiO2, loss_scale=0.86904)` |
+| Plume / ion wall loss / electron-ion collisions | enabled / enabled / enabled |
+| Neutral ingestion multiplier | `6.23341` |
+| Initial `dt` / adaptive / CFL | `5e-9 s` / true / `0.799` |
+| Timestep bounds | `1e-10` to `1e-7 s`; 100 small steps |
+| Duration / saves | `1e-3 s` / 1000 frames |
+
+The direct Python harness constructs `Config` and `SimParams` from those data.
+It has an M3-only atomic checkpoint path because the untranslated performance
+requires several hours in this environment. The checkpoint contains `U`, all
+cache/parameter arrays, time, adaptive-control flags, iteration, save index,
+and saved frames. A normal test forces a process-boundary pickle/reload after
+two accepted steps and proves the resumed result is bit-for-bit identical to
+the ordinary direct solver for a 20-cell case. Checkpointing does not alter the
+production solver or any physical input.
+
+The historical statistics are reproduced exactly, including two quirks:
+
+- tail quantities and averaged profiles use Julia frames 333 through 1000,
+  which is 668 frames;
+- their standard errors divide by `sqrt(667)`, while efficiency means use all
+  1000 frames, as in the historical test.
+
+Thrust and current targets use the fresh-run standard error as absolute
+tolerance. Efficiencies and peak averaged profiles use historical `rtol=1e-2`.
+
+### Completion and repeatability
+
+Both languages completed successfully:
+
+| Result | Julia | Python |
+|---|---:|---:|
+| Retcode | success | success |
+| Reported final time | `1e-3 s` | `1e-3 s` |
+| Accepted steps | 172,613 | 172,613 |
+| Saved frames | 1000 | 1000 |
+| Initial requested `dt` | `5e-9 s` | `5e-9 s` |
+| Initial internal / minimum saved `dt` | `2.220446049250313e-14 s` | same |
+| Maximum saved `dt` | `1.1538191002533778e-8 s` | `1.1538186046488877e-8 s` |
+
+Two Julia runs produced identical accepted-step counts, adaptive extrema, and
+all exported scalar metrics (zero measured difference). Their timed solver
+runs were 31.6763 s and 28.5281 s. No warnings were recorded by either final
+run. The saved-`dt` histories have relative-L2 difference `2.064865e-5`; save
+times differ by at most `2.168404e-19 s`.
+
+Only `dt` values stored at the 1000 save frames are available in the export.
+The minimum above is the intentionally tiny initial cached value, not a claim
+that every accepted timestep was recorded.
+
+### Historical scalar regression
+
+All fresh Julia and Python values pass the original historical test criteria.
+The last column is fresh Python versus fresh Julia, not error versus the
+rounded stored target.
+
+| Quantity | Stored target | Fresh Julia | Fresh Python | Julia/Python relative error |
+|---|---:|---:|---:|---:|
+| Thrust (mN) | 87.304 | 87.30356894 | 87.30352788 | `4.702240e-7` |
+| Discharge current (A) | 4.614 | 4.613871731 | 4.613868525 | `6.948353e-7` |
+| Ion current (A) | 3.922 | 3.921837549 | 3.921834971 | `6.573864e-7` |
+| Maximum electron temperature (eV) | 24.832 | 24.83210321 | 24.83213205 | `1.161662e-6` |
+| Maximum electric field (V/m) | 66,650 | 66,646.07945 | 66,646.12744 | `7.200894e-7` |
+| Maximum neutral density (m^-3) | `2.088e19` | `2.088229731e19` | `2.088229726e19` | `2.402370e-9` |
+| Maximum ion density (m^-3) | `9.651e17` | `9.650560007e17` | `9.650557878e17` | `2.205553e-7` |
+| Mass efficiency | 0.954 | 0.954283531 | 0.954283099 | `4.524926e-7` |
+| Current efficiency | 0.873 | 0.872832872 | 0.872833243 | `4.252783e-7` |
+| Divergence efficiency | 0.949 | 0.949137454 | 0.949137493 | `4.121172e-8` |
+| Voltage efficiency | 0.661 | 0.660914999 | 0.660915187 | `2.841885e-7` |
+| Anode efficiency | 0.5656 | 0.564569785 | 0.564569880 | `1.686929e-7` |
+
+No coefficient or operating parameter was adjusted toward these targets.
+
+### Trajectory and profile comparison
+
+Early and midpoint arrays remain close to floating-point scale, followed by a
+smoothly amplified late phase difference in this oscillatory solution:
+
+| Saved physical time | Overall max abs | Overall max rel* | Relative L2 |
+|---:|---:|---:|---:|
+| 0 | `2.621440e6` | `9.947990e-15` | `1.274726e-16` |
+| `1.001001e-6` | `8.451523e8` | `3.676981e-13` | `4.554096e-14` |
+| `1.001001e-5` | `1.533542e7` | `7.311147e-12` | `2.283763e-14` |
+| `1.001001e-4` | `5.145887e8` | `1.051778e-11` | `1.495378e-13` |
+| `5.005005e-4` | `1.318689e10` | `4.177008e-10` | `3.105864e-12` |
+| `1e-3` | `8.326781e18` | `1.299731e-2` | `4.411136e-4` |
+
+`max rel*` ignores reference magnitudes below `1e-12` of each field maximum;
+the absolute errors are shown because density and flux arrays reach very large
+scales. At the final instantaneous frame, the largest individual-field
+relative-L2 error is `1.302619e-3` for electric field. This is not hidden by
+the much smaller time-averaged errors.
+
+Saved histories show gradual rather than abrupt separation. For example, the
+saved `dt` first exceeds `1e-12` relative difference near `6.3e-5 s`, `1e-8`
+near `6.3e-4 s`, and `1e-6` near `6.7e-4 s`. Discharge-current relative error
+first exceeds `1e-8` near `6.27e-4 s` and `1e-6` near `8.85e-4 s`. Together
+with the M2 component/setup agreement and identical accepted-step counts, this
+supports classification as cross-language numerical/phase sensitivity rather
+than a newly located translation branch or parameter mismatch.
+
+Time-averaged axial-profile errors are:
+
+| Field | Max absolute error | Max relative error* | Relative L2 error |
+|---|---:|---:|---:|
+| Electric field | `3.317664e-1` | `3.814943e-4` | `5.138842e-6` |
+| Ion flux | `1.939820e16` | `3.229953e-4` | `1.602786e-6` |
+| Ion velocity | `1.022977e-1` | `3.562522e-5` | `6.659293e-7` |
+| Electron temperature | `7.173632e-5` | `1.799119e-5` | `2.304299e-6` |
+| Electron density | `2.136789e12` | `9.865448e-6` | `1.092194e-6` |
+| Ion density | `2.138204e12` | `6.413677e-4` | `1.090252e-6` |
+| Magnetic field | `1.040834e-17` | `1.022940e-15` | `1.418270e-16` |
+| Neutral density | `1.281957e12` | `9.654076e-7` | `4.775431e-8` |
+| Electric potential | `2.629015e-4` | `7.407341e-6` | `5.186442e-7` |
+
+The strict M2-style `1e-8` comparator is retained and exits 1 for the full
+long run. A second reported M3 envelope exits 0 with limits of `2e-6` for
+scalar relative error, `5e-5` for saved-`dt` relative L2, `1e-5` for averaged
+profiles, and `2e-3` for instantaneous checkpoint fields. These are post-hoc
+diagnostic envelopes, set just above the measured errors after locating their
+smooth growth; they are not independent pre-registered tolerances and do not
+replace the original historical acceptance criteria. Every envelope remains
+below the historical 1% profile/efficiency tolerance, but only the stored
+historical criteria provide an independent regression pass.
+
+### Confirmed M3 translation repairs
+
+Two defects blocked or invalidated this exact case before comparison:
+
+- `src/hallthruster/simulation/plume.py` compared the translated list-valued
+  `grid.cell_centers` directly with a float. Historical Julia performs a
+  vectorized comparison. Converting the centers to a NumPy array restores that
+  behavior; `test_plume_update_accepts_translated_list_cell_centers` covers it.
+- `src/hallthruster/simulation/postprocess.py` mixed Julia one-based and Python
+  zero-based frame indices, treated `Config` and `Grid1D` as dictionaries, and
+  referenced an undefined `config`. The smallest consistent repair uses
+  zero-based public Python frame indices and attribute access while retaining
+  the historical formulas. `tests/test_postprocess.py` covers thrust, charge-
+  weighted ion current, efficiencies, frame conversion, and averaging.
+
+The long-run phase difference was not treated as a translation defect because
+no first discontinuous calculation was found: machine-scale differences grow
+continuously while configuration, control flow, accepted-step count, M2
+components, and early trajectory remain matched.
+
+### Runtime and generated inspection data
+
+Hardware was an x86-64 Intel Core i7-7700HQ (4 cores / 8 threads) in the Linux
+devbox. Julia's two in-process timed simulations took 31.6763 s and 28.5281 s;
+the latter is the warmed figure. The pure-Python checkpointed validation took
+21,540.7 s (about 5.98 h). That Python value includes checkpoint serialization
+overhead and excludes work lost in earlier infrastructure-interrupted
+attempts. These are context measurements, not a controlled performance
+benchmark, and no optimization was attempted.
+
+Ignored generated results include both JSON exports, strict and documented-
+envelope summaries, the 57 MB Python restart checkpoint, and nine PNG plots:
+neutral/electron/ion densities, electron temperature, potential, electric and
+magnetic fields, discharge current history, and saved adaptive timestep.
+
+### M3 claim boundary
+
+The Python translation reproduces the historical HallThruster.jl `014a12f`
+SPT-100 regression within the original stored regression criteria for every
+validated scalar and averaged-profile peak. Fresh Julia/Python time-averaged
+scientific outputs agree at roughly `1e-6` relative scale, while the final
+instantaneous oscillatory state exhibits quantified phase drift up to
+`1.3e-3` relative L2 in an individual field. This one case does not establish
+equivalence for all configurations.
+
+Still deferred are other thrusters and operating points, longer-duration
+stability, complete per-accepted-step adaptive histories, JSON-runner repair,
+broader postprocessing cases, performance optimization, and compatibility
+with modern HallThruster.jl.
