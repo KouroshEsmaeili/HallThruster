@@ -83,6 +83,22 @@ See **[VALIDATION.md](VALIDATION.md)** for the complete methodology, numerical
 errors, historical configuration, repaired translation discrepancies, and
 scope limitations.
 
+## Scientific results
+
+The full 200-cell historical SPT-100 case completed in both languages with
+172,613 accepted steps each. Both results pass the original historical
+regression criteria, and the time-averaged profile differences are generally
+around `1e-6` relative L2. A small late oscillatory phase drift is explicitly
+documented; strict instantaneous long-run parity is not claimed. The current
+pure-Python implementation is unoptimized and substantially slower than Julia.
+
+See **[RESULTS.md](RESULTS.md)** for the concise scientific-results summary and
+**[VALIDATION.md](VALIDATION.md)** for the authoritative validation record.
+
+![Time-averaged profile relative-L2 errors](validation/results/profile_relative_l2.png)
+
+![Selected total trajectory relative-L2 checkpoints](validation/results/trajectory_relative_l2.png)
+
 ## Installation
 
 Clone this fork and create a virtual environment:
@@ -170,6 +186,7 @@ src/hallthruster/        maintained Python translation
 tests/                   Python unit, parity, and regression tests
 scripts/                 small executable Python smoke cases
 validation/              Julia/Python exporters and comparators
+RESULTS.md               concise scientific validation results
 VALIDATION.md            detailed scientific/translation validation report
 reactions/               reaction data inherited from upstream
 landmark/                LANDMARK-related data inherited from upstream
@@ -186,8 +203,10 @@ The top-level `python/`, `test/`, `docs/`, `paper/`, `ext/`, and Julia
 project metadata are retained as historical upstream/reference assets; they
 should not be mistaken for the maintained Python package.
 
-Generated validation JSON, plots, and long-run checkpoint files are intentionally
-ignored rather than committed to the repository.
+Generated validation JSON, raw-data plots, and long-run checkpoint files are
+intentionally ignored rather than committed to the repository. The small
+[summary figures](validation/results/README.md) are committed presentation
+artifacts generated only from metrics recorded in `VALIDATION.md`.
 
 ## Reproducing the validation
 
